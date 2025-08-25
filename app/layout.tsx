@@ -13,7 +13,7 @@ const Navbar: React.FC = () => {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/chat', label: 'Try FSB.' },
-    // { href: '/how-to-use', label: 'How To Use' }
+    { href: '/how-to-use', label: 'How To Use' }
   ];
 
   const isActive = (href: string) => {

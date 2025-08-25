@@ -1,20 +1,44 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
+import { useChatStore, type Msg } from '../lib/chatStore'; // sesuaikan path bila perlu
 
-type Msg = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  status?: "sending" | "sent";
-};
+function genId() {
+  // Pakai crypto.randomUUID kalau ada, fallback ke pseudo-ID
+  const g = globalThis as unknown as Record<string, unknown>;
+  const maybeCrypto = g['crypto'] as
+    | { randomUUID?: () => string }
+    | undefined;
+
+  if (maybeCrypto?.randomUUID) {
+    try {
+      return maybeCrypto.randomUUID();
+    } catch {
+      /* ignore */
+    }
+  }
+  return `id_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+}
+
+
+// helper type guard
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && x !== null;
+}
 
 export default function ChatPage() {
-  const [input, setInput] = useState("");
-  const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [isThinking, setIsThinking] = useState(false);
+  const [input, setInput] = useState('');
+
+  const msgs = useChatStore((s) => s.msgs);
+  const isThinking = useChatStore((s) => s.isThinking);
+  const addMany = useChatStore((s) => s.addMany);
+  const replaceText = useChatStore((s) => s.replaceText);
+  const markSent = useChatStore((s) => s.markSent);
+  const setThinking = useChatStore((s) => s.setThinking);
+
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll ke bawah saat ada perubahan
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -25,74 +49,54 @@ export default function ChatPage() {
     const q = input.trim();
     if (!q || isThinking) return;
 
-    const userId = crypto.randomUUID();
-    const placeholderId = crypto.randomUUID();
+    const userId = genId();
+    const placeholderId = genId();
 
-    // Tambahkan bubble user (sending) + placeholder assistant
-    setMsgs((m) => [
-      ...m,
-      { id: userId, role: "user", text: q, status: "sending" },
-      { id: placeholderId, role: "assistant", text: "Analyzing…" },
+    // Tambahkan bubble user + placeholder
+    addMany([
+      { id: userId, role: 'user', text: q, status: 'sending' } as Msg,
+      { id: placeholderId, role: 'assistant', text: 'Analyzing…' } as Msg,
     ]);
-    setInput("");
-    setIsThinking(true);
+    setInput('');
+    setThinking(true);
 
     try {
-      // Panggil proxy server-side
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: q }),
       });
 
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        const detail = payload?.detail ? `\n${payload.detail}` : "";
-        throw new Error(`HTTP ${res.status}: ${payload?.error ?? "Error"}${detail}`);
+        const payloadUnknown: unknown = await res.json().catch(() => ({}));
+        // safely extract error/detail tanpa any
+        let errMsg = 'Error';
+        let detail = '';
+        if (isRecord(payloadUnknown)) {
+          const pe = payloadUnknown['error'];
+          const pd = payloadUnknown['detail'];
+          if (typeof pe === 'string') errMsg = pe;
+          if (typeof pd === 'string') detail = `\n${pd}`;
+        }
+        throw new Error(`HTTP ${res.status}: ${errMsg}${detail}`);
       }
 
       const data = (await res.json()) as { text?: string };
-      const answer = (data?.text ?? "").trim();
+      const answer = (data?.text ?? '').trim();
 
-      // 1) user bubble -> sent
-      setMsgs((m) =>
-        m.map((x) => (x.id === userId ? { ...x, status: "sent" } : x))
-      );
-
-      // 2) ganti placeholder assistant dengan hasil
-      setMsgs((m) =>
-        m.map((x) =>
-          x.id === placeholderId
-            ? { ...x, text: answer || "(no content)" }
-            : x
-        )
-      );
+      markSent(userId);
+      replaceText(placeholderId, answer || '(no content)');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-
-      // user bubble tetap jadi "sent"
-      setMsgs((m) =>
-        m.map((x) => (x.id === userId ? { ...x, status: "sent" } : x))
-      );
-
-      // placeholder assistant -> bubble error
-      setMsgs((m) =>
-        m.map((x) =>
-          x.id === placeholderId
-            ? {
-                ...x,
-                text: `⚠️ Request failed\n${msg}`,
-              }
-            : x
-        )
-      );
+      markSent(userId);
+      replaceText(placeholderId, `⚠️ Request failed\n${msg}`);
     } finally {
-      setIsThinking(false);
+      setThinking(false);
     }
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") send();
+    if (e.key === 'Enter') send();
   }
 
   return (
@@ -116,20 +120,20 @@ export default function ChatPage() {
             </div>
           ) : (
             msgs.map((m) => {
-              const isUser = m.role === "user";
+              const isUser = m.role === 'user';
               const base =
-                "bubble max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed text-sm md:text-base";
+                'bubble max-w-[80%] px-4 py-3 rounded-2xl leading-relaxed text-sm md:text-base';
               const theme = isUser
-                ? "bg-[var(--fsb-cream)] text-[var(--fsb-green)]"
-                : "bg-[rgba(233,227,213,.08)] text-[var(--fsb-cream)]";
+                ? 'bg-[var(--fsb-cream)] text-[var(--fsb-green)]'
+                : 'bg-[rgba(233,227,213,.08)] text-[var(--fsb-cream)]';
               const anim =
                 isUser
-                  ? `bubble-outgoing ${m.status === "sending" ? "bubble-sending" : ""}`
-                  : "bubble-incoming";
+                  ? `bubble-outgoing ${m.status === 'sending' ? 'bubble-sending' : ''}`
+                  : 'bubble-incoming';
               return (
                 <div
                   key={m.id}
-                  className={`w-full flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`w-full flex ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`${base} ${theme} ${anim}`}>
                     <pre className="whitespace-pre-wrap break-words">{m.text}</pre>
@@ -166,7 +170,7 @@ export default function ChatPage() {
             title="Send"
             className="shrink-0 rounded-full px-4 py-3 bg-[var(--fsb-cream)] text-[var(--fsb-green)] font-bold hover:opacity-90 transition"
           >
-            {isThinking ? "…" : "➤"}
+            {isThinking ? '…' : '➤'}
           </button>
         </div>
       </section>
@@ -178,7 +182,9 @@ function TypingIndicator() {
   return (
     <div className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 bg-[rgba(233,227,213,.08)]">
       <div className="typing-dots">
-        <span></span><span></span><span></span>
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
       <span className="text-sm opacity-80">FSB is typing…</span>
     </div>
