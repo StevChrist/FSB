@@ -1,6 +1,7 @@
 # FSB — Fragen Sie Bot (German Cuisine Assistant)
 
-Try the Website : 
+Try the Website : https://fsb-515p.vercel.app/
+[Visit FSB Website](https://fsb-515p.vercel.app/)
 
 FSB is a web app that answers questions about German cuisine. It features a clean UI with animated chat bubbles, a typing indicator, and smooth scrolling.
 
