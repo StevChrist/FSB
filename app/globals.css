@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/* Palet sesuai tampilan */
+:root {
+  --fsb-green: #0A4A3E;   /* bg hijau tua */
+  --fsb-cream: #E9E3D5;   /* teks judul/btn */
+  --fsb-sand:  #CEC8BB;   /* input bar */
+}
+
+html, body, :root {
+  height: 100%;
+  color: var(--fsb-cream);
+}
+
+a {
+  @apply hover:opacity-80 transition;
+}
+
+/* helper */
+.fsb-title { @apply text-5xl md:text-6xl tracking-wide font-serif text-center; }
+.fsb-sub   { @apply text-center opacity-90 leading-relaxed; }
+.fsb-input {
+  @apply w-full rounded-full px-6 py-3 outline-none;
+  background: var(--fsb-sand);
+  color: #0f172a;
+}
+
+/* ==== NICE SCROLLBAR (apply class .nice-scroll ke container chat) ==== */
+.nice-scroll {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: rgba(233,227,213,.4) transparent;
+  scroll-behavior: smooth;
+}
+.nice-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(233,227,213,.35);   /* var(--fsb-cream) 35% */
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(233,227,213,.6);
+}
+/* Optional: subtle hover reveal */
+.nice-scroll { --scrollbar-opacity: 0; }
+.nice-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(233,227,213,.45);
+}
+
+/* ==== TYPING DOTS ==== */
+.typing-dots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fsb-cream);
+  opacity: .4;
+  animation: typing-bounce 1s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: .15s; }
+.typing-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: .3; }
+  40% { transform: translateY(-4px); opacity: .9; }
+}
+
+/* ==== BUBBLE ANIMATIONS ==== */
+@keyframes bubble-pop {
+  0%   { transform: scale(.95) translateY(6px); opacity: 0; }
+  60%  { transform: scale(1.02) translateY(0);  opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes bubble-slide-in {
+  0%   { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0);  opacity: 1; }
+}
+.bubble { animation-duration: .32s; animation-fill-mode: both; }
+.bubble-outgoing { animation-name: bubble-pop; }
+.bubble-incoming { animation-name: bubble-slide-in; }
+
+.bubble-sending {
+  position: relative;
+  overflow: hidden;
+}
+.bubble-sending::after {
+  /* shimmer halus saat status "sending" */
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(233,227,213,.07) 50%,
+    rgba(255,255,255,0) 100%);
+  transform: translateX(-100%);
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
